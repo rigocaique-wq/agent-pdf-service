@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
+from fastapi import FastAPI
+from starlette.responses import FileResponse, JSONResponse
 from mcp.server.fastmcp import FastMCP
 from weasyprint import HTML
 
@@ -18,7 +20,7 @@ def ping() -> str:
 
 @mcp.tool()
 def generate_pdf(title: str, content: str) -> dict:
-    """Generate a PDF from title and content and return a download URL."""
+    """Generate a PDF from title and content and return a download path."""
     safe_timestamp = str(datetime.now().timestamp()).replace(".", "_")
     file_name = f"document_{safe_timestamp}.pdf"
     file_path = OUTPUT_DIR / file_name
@@ -51,27 +53,29 @@ def generate_pdf(title: str, content: str) -> dict:
 
     return {
         "status": "success",
-        "message": "PDF generated successfully.",
         "filename": file_name,
-        "download_path": f"/files/{file_name}"
+        "download_url": f"https://agent-pdf-service.onrender.com/files/{file_name}"
     }
 
 
-app = mcp.streamable_http_app()
+app = FastAPI()
 
 
-@app.route("/files/{filename}")
-async def serve_file(request):
-    filename = request.path_params["filename"]
+@app.get("/")
+def health():
+    return {"message": "Server is running"}
+
+
+@app.get("/files/{filename}")
+async def serve_file(filename: str):
     file_path = OUTPUT_DIR / filename
-
     if not file_path.exists():
-        from starlette.responses import JSONResponse
         return JSONResponse({"error": "File not found"}, status_code=404)
-
-    from starlette.responses import FileResponse
     return FileResponse(
         path=str(file_path),
         media_type="application/pdf",
         filename=filename
     )
+
+
+app.mount("/mcp", mcp.streamable_http_app())
