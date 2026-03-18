@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 import os
@@ -6,6 +6,8 @@ from datetime import datetime
 from weasyprint import HTML
 
 app = FastAPI()
+
+API_KEY = os.getenv("API_KEY")
 
 class RequestData(BaseModel):
     title: str
@@ -16,9 +18,21 @@ def home():
     return {"message": "API is running"}
 
 @app.post("/generate-pdf")
-def generate_pdf(data: RequestData):
+def generate_pdf(
+    data: RequestData,
+    authorization: str = Header(default=None)
+):
     try:
-        # Create HTML content
+        if not API_KEY:
+            raise HTTPException(status_code=500, detail="API_KEY not configured on server")
+
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Missing Authorization header")
+
+        expected_value = f"Bearer {API_KEY}"
+        if authorization != expected_value:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
         html_content = f"""
         <html>
         <head>
@@ -42,13 +56,16 @@ def generate_pdf(data: RequestData):
         </html>
         """
 
-        # File name
         file_name = f"document_{datetime.now().timestamp()}.pdf"
-
-        # Generate PDF
         HTML(string=html_content).write_pdf(file_name)
 
-        return FileResponse(file_name, media_type='application/pdf', filename=file_name)
+        return FileResponse(
+            file_name,
+            media_type="application/pdf",
+            filename=file_name
+        )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
