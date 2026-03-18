@@ -2,26 +2,36 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI
-from starlette.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+
 from mcp.server.fastmcp import FastMCP
 from weasyprint import HTML
+
+# =========================
+# CONFIG
+# =========================
 
 PUBLIC_BASE_URL = "https://agent-pdf-service.onrender.com"
 OUTPUT_DIR = Path("/tmp/generated_pdfs")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# =========================
+# MCP SETUP
+# =========================
 
 mcp = FastMCP("render-pdf-server")
 
 
 @mcp.tool()
 def ping() -> str:
-    """Simple connectivity test."""
+    """Test connection."""
     return "MCP server is connected and working."
 
 
 @mcp.tool()
 def generate_pdf(title: str, content: str) -> dict:
-    """Generate a PDF from title and content and return a download URL."""
+    """Generate a PDF from text content."""
+
     safe_timestamp = str(datetime.now().timestamp()).replace(".", "_")
     file_name = f"document_{safe_timestamp}.pdf"
     file_path = OUTPUT_DIR / file_name
@@ -60,6 +70,10 @@ def generate_pdf(title: str, content: str) -> dict:
     }
 
 
+# =========================
+# FASTAPI APP
+# =========================
+
 app = FastAPI()
 
 
@@ -68,9 +82,20 @@ def health():
     return {"message": "Server is running"}
 
 
+# 🔥 CORREÇÃO IMPORTANTE (resolve seu erro atual)
+@app.get("/mcp")
+def redirect_mcp():
+    return RedirectResponse(url="/mcp/")
+
+
+# =========================
+# FILE DOWNLOAD
+# =========================
+
 @app.get("/files/{filename}")
 async def serve_file(filename: str):
     file_path = OUTPUT_DIR / filename
+
     if not file_path.exists():
         return JSONResponse({"error": "File not found"}, status_code=404)
 
@@ -80,5 +105,9 @@ async def serve_file(filename: str):
         filename=filename,
     )
 
+
+# =========================
+# MCP MOUNT
+# =========================
 
 app.mount("/mcp", mcp.streamable_http_app())
