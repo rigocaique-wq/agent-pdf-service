@@ -3,7 +3,7 @@ from pathlib import Path
 import contextlib
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from weasyprint import HTML
@@ -28,7 +28,7 @@ mcp = FastMCP(
     transport_security=transport_security,
 )
 
-# Faz o endpoint MCP responder diretamente em /mcp quando montado
+# Faz o endpoint MCP responder diretamente em /mcp/ quando montado em /mcp
 mcp.settings.streamable_http_path = "/"
 
 
@@ -93,20 +93,16 @@ def health():
     return {"message": "Server is running"}
 
 
-# Permite que o Agent Builder faça probe por GET sem tomar 400
-@app.get("/mcp")
-async def mcp_probe_root():
-    return Response(status_code=200)
-
-
-@app.get("/mcp/")
-async def mcp_probe():
-    return Response(status_code=200)
+# Redireciona /mcp -> /mcp/ preservando o método HTTP
+@app.api_route("/mcp", methods=["GET", "POST", "HEAD", "OPTIONS"])
+async def mcp_redirect():
+    return RedirectResponse(url="/mcp/", status_code=307)
 
 
 @app.get("/files/{filename}")
 async def serve_file(filename: str):
     file_path = OUTPUT_DIR / filename
+
     if not file_path.exists():
         return JSONResponse({"error": "File not found"}, status_code=404)
 
