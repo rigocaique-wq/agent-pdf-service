@@ -72,10 +72,20 @@ def generate_pdf(title: str, content: str) -> dict:
 
     HTML(string=html_content).write_pdf(str(file_path))
 
+    download_url = f"{PUBLIC_BASE_URL}/files/{file_name}"
+
     return {
-        "status": "success",
-        "filename": file_name,
-        "download_url": f"{PUBLIC_BASE_URL}/files/{file_name}",
+        "content": [
+            {
+                "type": "text",
+                "text": f"PDF generated successfully.\nDownload it here: {download_url}"
+            }
+        ],
+        "structuredContent": {
+            "status": "success",
+            "filename": file_name,
+            "download_url": download_url
+        }
     }
 
 
