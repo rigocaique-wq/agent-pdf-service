@@ -1,71 +1,77 @@
-from fastapi import FastAPI, HTTPException, Header
-from pydantic import BaseModel
-from fastapi.responses import FileResponse
-import os
 from datetime import datetime
+from pathlib import Path
+
+from mcp.server.fastmcp import FastMCP
 from weasyprint import HTML
 
-app = FastAPI()
+mcp = FastMCP("render-pdf-server", json_response=True)
 
-API_KEY = os.getenv("API_KEY")
+OUTPUT_DIR = Path("/tmp/generated_pdfs")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-class RequestData(BaseModel):
-    title: str
-    content: str
 
-@app.get("/")
-def home():
-    return {"message": "API is running"}
+@mcp.tool()
+def ping() -> str:
+    """Simple connectivity test tool."""
+    return "MCP server is connected and working."
 
-@app.post("/generate-pdf")
-def generate_pdf(
-    data: RequestData,
-    authorization: str = Header(default=None)
-):
-    try:
-        if not API_KEY:
-            raise HTTPException(status_code=500, detail="API_KEY not configured on server")
 
-        if not authorization:
-            raise HTTPException(status_code=401, detail="Missing Authorization header")
+@mcp.tool()
+def generate_pdf(title: str, content: str) -> dict:
+    """Generate a PDF from title and content and return a download URL."""
+    safe_timestamp = str(datetime.now().timestamp()).replace(".", "_")
+    file_name = f"document_{safe_timestamp}.pdf"
+    file_path = OUTPUT_DIR / file_name
 
-        expected_value = f"Bearer {API_KEY}"
-        if authorization != expected_value:
-            raise HTTPException(status_code=401, detail="Invalid API key")
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 40px;
+            }}
+            h1 {{
+                color: #2c3e50;
+            }}
+            p {{
+                line-height: 1.6;
+                white-space: pre-wrap;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>{title}</h1>
+        <p>{content}</p>
+    </body>
+    </html>
+    """
 
-        html_content = f"""
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: Arial;
-                    margin: 40px;
-                }}
-                h1 {{
-                    color: #2c3e50;
-                }}
-                p {{
-                    line-height: 1.6;
-                }}
-            </style>
-        </head>
-        <body>
-            <h1>{data.title}</h1>
-            <p>{data.content}</p>
-        </body>
-        </html>
-        """
+    HTML(string=html_content).write_pdf(str(file_path))
 
-        file_name = f"document_{datetime.now().timestamp()}.pdf"
-        HTML(string=html_content).write_pdf(file_name)
+    return {
+        "status": "success",
+        "message": "PDF generated successfully.",
+        "filename": file_name,
+        "download_path": f"/files/{file_name}"
+    }
 
-        return FileResponse(
-            file_name,
-            media_type="application/pdf",
-            filename=file_name
-        )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+app = mcp.streamable_http_app()
+
+
+@app.route("/files/{filename}")
+async def serve_file(request):
+    filename = request.path_params["filename"]
+    file_path = OUTPUT_DIR / filename
+
+    if not file_path.exists():
+        from starlette.responses import JSONResponse
+        return JSONResponse({"error": "File not found"}, status_code=404)
+
+    from starlette.responses import FileResponse
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=filename
+    )
