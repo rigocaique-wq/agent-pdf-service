@@ -5,16 +5,30 @@ import contextlib
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from weasyprint import HTML
 
 PUBLIC_BASE_URL = "https://agent-pdf-service.onrender.com"
 OUTPUT_DIR = Path("/tmp/generated_pdfs")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-mcp = FastMCP("render-pdf-server", json_response=True)
+transport_security = TransportSecuritySettings(
+    allowed_hosts=[
+        "127.0.0.1:*",
+        "localhost:*",
+        "[::1]:*",
+        "agent-pdf-service.onrender.com",
+        "agent-pdf-service.onrender.com:*",
+    ]
+)
 
-# Faz o servidor MCP responder na raiz do mount.
-# Sem isso, ao montar em /mcp, o endpoint real vira /mcp/mcp.
+mcp = FastMCP(
+    "render-pdf-server",
+    json_response=True,
+    transport_security=transport_security,
+)
+
+# Faz o endpoint MCP responder diretamente em /mcp
 mcp.settings.streamable_http_path = "/"
 
 
