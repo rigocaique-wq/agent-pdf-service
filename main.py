@@ -1,81 +1,61 @@
-from datetime import datetime
-from pathlib import Path
-
 from fastapi import FastAPI
-from starlette.responses import FileResponse, JSONResponse
-from mcp.server.fastmcp import FastMCP
-from weasyprint import HTML
-
-mcp = FastMCP("render-pdf-server", json_response=True)
-
-OUTPUT_DIR = Path("/tmp/generated_pdfs")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-
-@mcp.tool()
-def ping() -> str:
-    """Simple connectivity test tool."""
-    return "MCP server is connected and working."
-
-
-@mcp.tool()
-def generate_pdf(title: str, content: str) -> dict:
-    """Generate a PDF from title and content and return a download path."""
-    safe_timestamp = str(datetime.now().timestamp()).replace(".", "_")
-    file_name = f"document_{safe_timestamp}.pdf"
-    file_path = OUTPUT_DIR / file_name
-
-    html_content = f"""
-    <html>
-    <head>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                margin: 40px;
-            }}
-            h1 {{
-                color: #2c3e50;
-            }}
-            p {{
-                line-height: 1.6;
-                white-space: pre-wrap;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>{title}</h1>
-        <p>{content}</p>
-    </body>
-    </html>
-    """
-
-    HTML(string=html_content).write_pdf(str(file_path))
-
-    return {
-        "status": "success",
-        "filename": file_name,
-        "download_url": f"https://agent-pdf-service.onrender.com/files/{file_name}"
-    }
-
+from pydantic import BaseModel
+from typing import Dict, Any
 
 app = FastAPI()
 
+class MCPRequest(BaseModel):
+    method: str
+    params: Dict[str, Any] = {}
 
-@app.get("/")
-def health():
-    return {"message": "Server is running"}
+@app.post("/mcp")
+async def mcp_endpoint(request: MCPRequest):
+    
+    if request.method == "initialize":
+        return {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {
+                "tools": {}
+            },
+            "serverInfo": {
+                "name": "pdf-generator",
+                "version": "1.0"
+            }
+        }
 
+    elif request.method == "tools/list":
+        return {
+            "tools": [
+                {
+                    "name": "generate_pdf",
+                    "description": "Generate a PDF from text",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "content": {"type": "string"}
+                        },
+                        "required": ["title", "content"]
+                    }
+                }
+            ]
+        }
 
-@app.get("/files/{filename}")
-async def serve_file(filename: str):
-    file_path = OUTPUT_DIR / filename
-    if not file_path.exists():
-        return JSONResponse({"error": "File not found"}, status_code=404)
-    return FileResponse(
-        path=str(file_path),
-        media_type="application/pdf",
-        filename=filename
-    )
+    elif request.method == "tools/call":
+        tool_name = request.params.get("name")
+        arguments = request.params.get("arguments", {})
 
+        if tool_name == "generate_pdf":
+            title = arguments.get("title")
+            content = arguments.get("content")
 
-app.mount("/mcp", mcp.streamable_http_app())
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"PDF generated with title: {title}"
+                    }
+                ]
+            }
+
+    return {"error": "Unknown method"}
