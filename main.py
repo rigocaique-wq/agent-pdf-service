@@ -1,61 +1,55 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Dict, Any
+from datetime import datetime
+from pathlib import Path
 
-app = FastAPI()
+from mcp.server.fastmcp import FastMCP
+from weasyprint import HTML
 
-class MCPRequest(BaseModel):
-    method: str
-    params: Dict[str, Any] = {}
+mcp = FastMCP("render-pdf-server")
+OUTPUT_DIR = Path("/tmp/generated_pdfs")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-@app.post("/mcp")
-async def mcp_endpoint(request: MCPRequest):
-    
-    if request.method == "initialize":
-        return {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {
-                "tools": {}
-            },
-            "serverInfo": {
-                "name": "pdf-generator",
-                "version": "1.0"
-            }
-        }
+@mcp.tool()
+def ping() -> str:
+    """Test if the MCP server is reachable."""
+    return "MCP server is connected and working."
 
-    elif request.method == "tools/list":
-        return {
-            "tools": [
-                {
-                    "name": "generate_pdf",
-                    "description": "Generate a PDF from text",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "title": {"type": "string"},
-                            "content": {"type": "string"}
-                        },
-                        "required": ["title", "content"]
-                    }
-                }
-            ]
-        }
+@mcp.tool()
+def generate_pdf(title: str, content: str) -> dict:
+    """Generate a PDF from title and content."""
+    safe_timestamp = str(datetime.now().timestamp()).replace(".", "_")
+    file_name = f"document_{safe_timestamp}.pdf"
+    file_path = OUTPUT_DIR / file_name
 
-    elif request.method == "tools/call":
-        tool_name = request.params.get("name")
-        arguments = request.params.get("arguments", {})
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 40px;
+            }}
+            h1 {{
+                color: #2c3e50;
+            }}
+            p {{
+                line-height: 1.6;
+                white-space: pre-wrap;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>{title}</h1>
+        <p>{content}</p>
+    </body>
+    </html>
+    """
 
-        if tool_name == "generate_pdf":
-            title = arguments.get("title")
-            content = arguments.get("content")
+    HTML(string=html_content).write_pdf(str(file_path))
 
-            return {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"PDF generated with title: {title}"
-                    }
-                ]
-            }
+    return {
+        "status": "success",
+        "filename": file_name,
+        "download_url": f"https://agent-pdf-service.onrender.com/files/{file_name}"
+    }
 
-    return {"error": "Unknown method"}
+app = mcp.sse_app()
