@@ -130,7 +130,7 @@ def generate_pdf(title: str, content: str) -> dict:
         <style>
             @page {{
                 size: A4;
-                margin: 105px 55px 85px 55px;
+                margin: 75px 55px 85px 55px;
 
                 @bottom-center {{
                     content: "3301 N University Drive, Suite 400, Coral Springs, FL 33065   |   www.datameaning.com   |   888.4BI.DATA";
@@ -161,17 +161,16 @@ def generate_pdf(title: str, content: str) -> dict:
 
             .page-header {{
                  position: fixed;
-                 top: -105px;
+                 top: -75px;
                  left: -55px;
                  right: -55px;
-                 height: 82px;
+                 height: 52px;
             }}
 
             .header-image {{
-                width: calc(100% + 110px);
-                height: 82px;
-                object-fit: cover;
                 display: block;
+                width: calc(100% + 110px);
+                height: 52px;
             }}
 
             .content {{
