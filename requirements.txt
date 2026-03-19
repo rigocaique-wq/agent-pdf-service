@@ -2,3 +2,4 @@ fastapi
 mcp
 weasyprint
 uvicorn
+markdown
