@@ -160,15 +160,15 @@ def generate_pdf(title: str, content: str) -> dict:
             }}
 
             .page-header {{
-                position: fixed;
-                top: -105px;
-                left: 0;
-                right: 0;
-                height: 82px;
+                 position: fixed;
+                 top: -105px;
+                 left: -55px;
+                 right: -55px;
+                 height: 82px;
             }}
 
             .header-image {{
-                width: 100%;
+                width: calc(100% + 110px);
                 height: 82px;
                 object-fit: cover;
                 display: block;
