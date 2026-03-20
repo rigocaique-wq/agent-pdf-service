@@ -128,7 +128,7 @@ def generate_pdf(title: str, content: str) -> dict:
         <style>
             @page {{
                 size: A4;
-                margin: 92px 55px 78px 55px;
+                margin: 96px 55px 78px 55px;
 
                 @bottom-left {{
                     content: "3301 N University Drive, Suite 400, Coral Springs, FL 33065.";
@@ -170,13 +170,14 @@ def generate_pdf(title: str, content: str) -> dict:
 
             .page-header {{
                 position: fixed;
-                top: -92px;
+                top: -96px;
                 left: -55px;
                 right: -55px;
-                height: 74px;
+                height: 82px;
+                background-color: white;
                 background-image: url("{header_image_uri}");
                 background-repeat: no-repeat;
-                background-size: 100% 100%;
+                background-size: 100% auto;
                 background-position: center top;
             }}
 
