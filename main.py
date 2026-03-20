@@ -89,7 +89,6 @@ def remove_duplicated_title_from_content(title: str, content: str) -> str:
         if heading_text == normalized_title:
             del lines[first_non_empty_idx]
 
-            # remove linhas vazias logo após o título removido
             while first_non_empty_idx < len(lines) and not lines[first_non_empty_idx].strip():
                 del lines[first_non_empty_idx]
 
@@ -118,7 +117,6 @@ def generate_pdf(title: str, content: str) -> dict:
     cleaned_content = remove_duplicated_title_from_content(title, cleaned_content)
 
     body_html = markdown_to_html(cleaned_content)
-
     header_image_uri = HEADER_IMAGE.as_uri()
 
     html_content = f"""
@@ -130,22 +128,33 @@ def generate_pdf(title: str, content: str) -> dict:
         <style>
             @page {{
                 size: A4;
-                margin: 75px 55px 85px 55px;
+                margin: 92px 55px 78px 55px;
+
+                @bottom-left {{
+                    content: "3301 N University Drive, Suite 400, Coral Springs, FL 33065.";
+                    font-size: 8.5pt;
+                    color: #a4b2c7;
+                }}
 
                 @bottom-center {{
-                    content: "3301 N University Drive, Suite 400, Coral Springs, FL 33065   |   www.datameaning.com   |   888.4BI.DATA";
-                    font-size: 9pt;
-                    color: #9aa9bf;
+                    content: "www.datameaning.com";
+                    font-size: 8.5pt;
+                    color: #a4b2c7;
+                }}
+
+                @bottom-right {{
+                    content: "888.4BI.DATA   |   " counter(page);
+                    font-size: 8.5pt;
+                    color: #a4b2c7;
                 }}
             }}
 
             :root {{
-                --primary: #2f5faa;
+                --primary: #3563b2;
                 --primary-dark: #173a70;
-                --text: #5f718b;
-                --title: #2f5faa;
+                --text: #687b97;
                 --border: #d9e1ee;
-                --link: #5b6fd6;
+                --link: #7b60c9;
             }}
 
             html {{
@@ -160,17 +169,15 @@ def generate_pdf(title: str, content: str) -> dict:
             }}
 
             .page-header {{
-                 position: fixed;
-                 top: -75px;
-                 left: -55px;
-                 right: -55px;
-                 height: 52px;
-            }}
-
-            .header-image {{
-                display: block;
-                width: calc(100% + 110px);
-                height: 52px;
+                position: fixed;
+                top: -92px;
+                left: -55px;
+                right: -55px;
+                height: 74px;
+                background-image: url("{header_image_uri}");
+                background-repeat: no-repeat;
+                background-size: 100% 100%;
+                background-position: center top;
             }}
 
             .content {{
@@ -179,19 +186,23 @@ def generate_pdf(title: str, content: str) -> dict:
             }}
 
             .doc-title {{
-                color: var(--title);
-                font-size: 24pt;
+                color: var(--primary);
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 29pt;
                 font-weight: 700;
-                margin: 0 0 26px 0;
-                line-height: 1.2;
+                line-height: 1.12;
+                letter-spacing: -0.4px;
+                margin: 6px 0 26px 0;
             }}
 
             h1 {{
-                color: var(--title);
-                font-size: 24pt;
+                color: var(--primary);
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 29pt;
                 font-weight: 700;
-                margin: 0 0 26px 0;
-                line-height: 1.2;
+                line-height: 1.12;
+                letter-spacing: -0.4px;
+                margin: 6px 0 26px 0;
             }}
 
             h2 {{
@@ -199,8 +210,8 @@ def generate_pdf(title: str, content: str) -> dict:
                 font-family: Georgia, "Times New Roman", serif;
                 font-size: 16pt;
                 font-weight: 700;
-                margin: 28px 0 14px 0;
-                line-height: 1.25;
+                line-height: 1.2;
+                margin: 22px 0 12px 0;
                 page-break-after: avoid;
             }}
 
@@ -209,29 +220,31 @@ def generate_pdf(title: str, content: str) -> dict:
                 font-family: Georgia, "Times New Roman", serif;
                 font-size: 13pt;
                 font-weight: 700;
-                margin: 18px 0 10px 0;
-                line-height: 1.25;
+                line-height: 1.2;
+                margin: 16px 0 10px 0;
                 page-break-after: avoid;
             }}
 
+            p, li {{
+                font-size: 11pt;
+                line-height: 1.45;
+            }}
+
             p {{
-                margin: 0 0 12px 0;
-                line-height: 1.6;
-                text-align: left;
+                margin: 0 0 11px 0;
             }}
 
             ul, ol {{
-                margin: 0 0 14px 24px;
-                padding: 0;
+                margin: 0 0 14px 18px;
+                padding: 0 0 0 12px;
             }}
 
             li {{
-                margin: 0 0 6px 0;
-                line-height: 1.5;
+                margin: 0 0 7px 0;
             }}
 
             strong {{
-                color: #42536d;
+                color: #3d4f68;
                 font-weight: 700;
             }}
 
@@ -243,7 +256,7 @@ def generate_pdf(title: str, content: str) -> dict:
             hr {{
                 border: none;
                 border-top: 1px solid var(--border);
-                margin: 20px 0;
+                margin: 18px 0;
             }}
 
             table {{
@@ -293,9 +306,7 @@ def generate_pdf(title: str, content: str) -> dict:
         </style>
     </head>
     <body>
-        <div class="page-header">
-            <img src="{header_image_uri}" alt="Document Header" class="header-image">
-        </div>
+        <div class="page-header"></div>
 
         <main class="content">
             <h1 class="doc-title">{safe_title}</h1>
@@ -316,7 +327,7 @@ def generate_pdf(title: str, content: str) -> dict:
         "content": [
             {
                 "type": "text",
-                "text": f"PDF generated successfully.\nDownload it here: {download_url}"
+                "text": f"PDF generated successfully.\\nDownload it here: {download_url}"
             }
         ],
         "structuredContent": {
