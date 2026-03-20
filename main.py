@@ -132,19 +132,19 @@ def generate_pdf(title: str, content: str) -> dict:
 
                 @bottom-left {{
                     content: "3301 N University Drive, Suite 400, Coral Springs, FL 33065.";
-                    font-size: 8.5pt;
+                    font-size: 7.9pt;
                     color: #a4b2c7;
                 }}
 
                 @bottom-center {{
                     content: "www.datameaning.com";
-                    font-size: 8.5pt;
+                    font-size: 7.9pt;
                     color: #a4b2c7;
                 }}
 
                 @bottom-right {{
                     content: "888.4BI.DATA   |   " counter(page);
-                    font-size: 8.5pt;
+                    font-size: 7.9pt;
                     color: #a4b2c7;
                 }}
             }}
@@ -158,7 +158,7 @@ def generate_pdf(title: str, content: str) -> dict:
             }}
 
             html {{
-                font-size: 11pt;
+                font-size: 10pt;
             }}
 
             body {{
@@ -189,7 +189,7 @@ def generate_pdf(title: str, content: str) -> dict:
             .doc-title {{
                 color: var(--primary);
                 font-family: Arial, Helvetica, sans-serif;
-                font-size: 29pt;
+                font-size: 20pt;
                 font-weight: 700;
                 line-height: 1.12;
                 letter-spacing: -0.4px;
@@ -199,7 +199,7 @@ def generate_pdf(title: str, content: str) -> dict:
             h1 {{
                 color: var(--primary);
                 font-family: Arial, Helvetica, sans-serif;
-                font-size: 29pt;
+                font-size: 20pt;
                 font-weight: 700;
                 line-height: 1.12;
                 letter-spacing: -0.4px;
@@ -209,7 +209,7 @@ def generate_pdf(title: str, content: str) -> dict:
             h2 {{
                 color: var(--primary-dark);
                 font-family: Georgia, "Times New Roman", serif;
-                font-size: 16pt;
+                font-size: 14pt;
                 font-weight: 700;
                 line-height: 1.2;
                 margin: 22px 0 12px 0;
@@ -219,7 +219,7 @@ def generate_pdf(title: str, content: str) -> dict:
             h3 {{
                 color: var(--primary-dark);
                 font-family: Georgia, "Times New Roman", serif;
-                font-size: 13pt;
+                font-size: 11pt;
                 font-weight: 700;
                 line-height: 1.2;
                 margin: 16px 0 10px 0;
