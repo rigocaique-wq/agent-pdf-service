@@ -3,7 +3,6 @@ from pathlib import Path
 import contextlib
 import html
 import re
-from io import BytesIO
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -13,7 +12,6 @@ from mcp.server.transport_security import TransportSecuritySettings
 import markdown
 from bs4 import BeautifulSoup, NavigableString, Tag
 from docx import Document
-from docx.enum.section import WD_SECTION
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -39,12 +37,11 @@ transport_security = TransportSecuritySettings(
 )
 
 mcp = FastMCP(
-    "render-word-server",
+    "render-pdf-server",
     json_response=True,
     transport_security=transport_security,
 )
 
-# Faz o endpoint MCP responder diretamente em /mcp/ quando montado em /mcp
 mcp.settings.streamable_http_path = "/"
 
 
@@ -61,21 +58,12 @@ def normalize_title(title: str) -> str:
 
 def normalize_markdown(content: str) -> str:
     content = (content or "").strip()
-
-    # Remove blocos ```markdown ... ``` se vierem do modelo
     content = re.sub(r"^```(?:markdown|md)?\s*", "", content, flags=re.IGNORECASE)
     content = re.sub(r"\s*```$", "", content)
-
     return content.strip()
 
 
 def remove_duplicated_title_from_content(title: str, content: str) -> str:
-    """
-    Remove um H1 inicial duplicado do markdown quando ele repete o mesmo title.
-    Exemplo:
-    title = "My Doc"
-    content começa com "# My Doc"
-    """
     normalized_title = (title or "").strip().lower()
     lines = content.splitlines()
 
@@ -121,10 +109,8 @@ def set_cell_text(cell, text: str):
 
 
 def add_page_number(paragraph):
-    """
-    Adiciona campo dinâmico de número da página no rodapé do Word.
-    """
     run = paragraph.add_run()
+
     fld_char_begin = OxmlElement("w:fldChar")
     fld_char_begin.set(qn("w:fldCharType"), "begin")
 
@@ -291,7 +277,6 @@ def add_html_block_to_doc(doc: Document, node, list_level=0):
                 row = table.add_row().cells
                 for i, cell_node in enumerate(row_cells):
                     set_cell_text(row[i], cell_node.get_text(" ", strip=True))
-
     else:
         for child in node.children:
             add_html_block_to_doc(doc, child, list_level=list_level)
@@ -307,7 +292,6 @@ def build_word_document(title: str, html_body: str) -> Document:
     section.left_margin = Inches(0.75)
     section.right_margin = Inches(0.75)
 
-    # Header com imagem, se existir
     header = section.header
     header_p = header.paragraphs[0]
     header_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -317,10 +301,8 @@ def build_word_document(title: str, html_body: str) -> Document:
             run = header_p.add_run()
             run.add_picture(str(HEADER_IMAGE), width=Inches(6.8))
         except Exception:
-            # Se der problema com a imagem, segue sem quebrar
             pass
 
-    # Footer
     footer = section.footer
     footer_p = footer.paragraphs[0]
     footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -334,13 +316,11 @@ def build_word_document(title: str, html_body: str) -> Document:
 
     add_page_number(footer_p)
 
-    # Título principal
     title_p = doc.add_paragraph(style="CustomTitle")
     title_p.paragraph_format.space_after = Pt(18)
     title_p.add_run(title)
 
     soup = BeautifulSoup(html_body, "html.parser")
-
     for node in soup.contents:
         add_html_block_to_doc(doc, node)
 
@@ -348,35 +328,34 @@ def build_word_document(title: str, html_body: str) -> Document:
 
 
 @mcp.tool()
-def generate_word(title: str, content: str) -> dict:
-    """Generate a styled Word document from markdown content and return a download URL."""
+def generate_pdf(title: str, content: str) -> dict:
+    """Generate a document from markdown content and return a download URL."""
     safe_timestamp = str(datetime.now().timestamp()).replace(".", "_")
     file_name = f"document_{safe_timestamp}.docx"
     file_path = OUTPUT_DIR / file_name
 
     safe_title = html.unescape(normalize_title(title))
-
     cleaned_content = normalize_markdown(content)
     cleaned_content = remove_duplicated_title_from_content(title, cleaned_content)
-
     body_html = markdown_to_html(cleaned_content)
 
     doc = build_word_document(safe_title, body_html)
     doc.save(str(file_path))
 
-    download_url = f"{PUBLIC_BASE_URL}/files/{file_name}"
+    file_url = f"{PUBLIC_BASE_URL}/files/{file_name}"
 
     return {
         "content": [
             {
                 "type": "text",
-                "text": f"Word document generated successfully.\nDownload it here: {download_url}"
+                "text": f"File generated successfully.\nDownload it here: {file_url}"
             }
         ],
         "structuredContent": {
             "status": "success",
             "filename": file_name,
-            "download_url": download_url
+            "file_url": file_url,
+            "download_url": file_url
         }
     }
 
@@ -395,7 +374,6 @@ def health():
     return {"message": "Server is running"}
 
 
-# Redireciona /mcp -> /mcp/ preservando o método HTTP
 @app.api_route("/mcp", methods=["GET", "POST", "HEAD", "OPTIONS"])
 async def mcp_redirect():
     return RedirectResponse(url="/mcp/", status_code=307)
