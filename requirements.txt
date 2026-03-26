@@ -1,5 +1,6 @@
 fastapi
-mcp
-weasyprint
 uvicorn
+mcp
 markdown
+python-docx
+beautifulsoup4
